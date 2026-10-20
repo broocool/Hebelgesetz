@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hebelgesetz Wippe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: Kopf, grosse Wippen-Zeichnung, Regler in zwei Spalten (links/rechts), Messwerte, Erklärtext */
+:root{
+  --bg:#f6f7f4; --surface:#ffffff; --fg:#1d2420; --muted:#5d6a63; --line:#d6dcd7;
+  --left:#2f6fb3; --right:#c2562a; --pivot:#5b6b2e; --beam:#8a6a45; --ok:#2e7d4f; --warn:#b5651d;
+  --display:"Fraunces",Georgia,serif; --body:"Source Sans 3",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#161a18; --surface:#1f2421; --fg:#e7ece8; --muted:#9aa69f; --line:#343c37;
+  --left:#6aa6e8; --right:#ec8a5f; --pivot:#a8bc6a; --beam:#b89468; --ok:#6cc690; --warn:#e6a25a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#161a18; --surface:#1f2421; --fg:#e7ece8; --muted:#9aa69f; --line:#343c37;
+  --left:#6aa6e8; --right:#ec8a5f; --pivot:#a8bc6a; --beam:#b89468; --ok:#6cc690; --warn:#e6a25a; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font:16px/1.55 var(--body)}
+.wrap{max-width:980px;margin:0 auto;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:22px}
+.eyebrow{font:600 12px var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+h1{font:600 clamp(28px,5vw,42px)/1.1 var(--display);margin:4px 0 6px;text-wrap:balance}
+h2{font:600 22px/1.2 var(--display);margin:0 0 8px}
+h3{font:600 17px/1.3 var(--body);margin:18px 0 4px}
+p{margin:0 0 10px;max-width:68ch}
+.lead{color:var(--muted);font-size:18px}
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+svg{display:block;width:100%;height:auto}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:620px){.controls{grid-template-columns:1fr}}
+.side{border-top:3px solid var(--c);padding-top:10px;display:grid;gap:10px}
+.side.l{--c:var(--left)} .side.r{--c:var(--right)}
+.side h2{font-size:18px;color:var(--c)}
+label{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:baseline;font-size:15px}
+label output{font:500 15px var(--mono);font-variant-numeric:tabular-nums;color:var(--c)}
+input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--c)}
+.derived{font:500 14px var(--mono);color:var(--muted)}
+.derived b{color:var(--c);font-weight:500}
+.readout{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:620px){.readout{grid-template-columns:1fr}}
+.cell{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 14px;min-width:0}
+.cell .k{font-size:13px;color:var(--muted)}
+.cell.l{--c:var(--left)} .cell.r{--c:var(--right)}
+.calc{font:500 16px var(--mono);font-variant-numeric:tabular-nums;color:var(--muted);margin-top:4px}
+.calc b{color:var(--c);font-weight:500}
+.cell .v{font:500 20px var(--mono);font-variant-numeric:tabular-nums}
+.state.ok .v{color:var(--ok)} .state.no .v{color:var(--warn)}
+.opts{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:15px;color:var(--muted)}
+.opts label{display:flex;gap:6px;align-items:center}
+.formula{font:500 19px var(--mono);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 14px;display:inline-block}
+.note{border-left:3px solid var(--pivot);padding:4px 0 4px 14px;color:var(--muted);font-size:15px}
+.prose{display:grid;gap:4px}
+input:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+</style>
+<style>body{margin:0}*{box-sizing:border-box}</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Physik · Kräfte · Hebel</div>
+    <h1>Das Hebelgesetz</h1>
+    <p class="lead">Stelle auf beiden Seiten der Wippe die Masse eines Körpers und seinen Abstand vom Drehpunkt ein. Die Pfeile zeigen die Kräfte, die auf den Balken wirken. Wann bleibt die Wippe im Gleichgewicht?</p>
+  </header>
+
+  <div class="controls">
+    <div class="side l">
+      <h2>Linke Seite</h2>
+      <label for="m1">Masse m₁ <output id="m1o"></output><input type="range" id="m1" min="0.5" max="10" step="0.5" value="3"></label>
+      <label for="a1">Hebelarm l₁ <output id="a1o"></output><input type="range" id="a1" min="5" max="50" step="5" value="30"></label>
+    </div>
+    <div class="side r">
+      <h2>Rechte Seite</h2>
+      <label for="m2">Masse m₂ <output id="m2o"></output><input type="range" id="m2" min="0.5" max="10" step="0.5" value="6"></label>
+      <label for="a2">Hebelarm l₂ <output id="a2o"></output><input type="range" id="a2" min="5" max="50" step="5" value="15"></label>
+    </div>
+  </div>
+
+  <div class="stage"><svg id="svg" viewBox="0 0 760 400" role="img" aria-label="Wippe mit Kraftpfeilen"></svg></div>
+
+  <div class="readout">
+    <div class="cell l"><div class="k">Linke Seite</div>
+      <div class="calc">F₁ = m₁ · g = <b id="F1"></b></div>
+      <div class="calc">F₁ · l₁ = <b id="M1"></b></div></div>
+    <div class="cell r"><div class="k">Rechte Seite</div>
+      <div class="calc">F₂ = m₂ · g = <b id="F2"></b></div>
+      <div class="calc">F₂ · l₂ = <b id="M2"></b></div></div>
+    <div class="cell state" id="st"><div class="k">Zustand</div><div class="v" id="stv"></div></div>
+  </div>
+
+  <div class="opts">
+    <label><input type="checkbox" id="showFA" checked> Kraft im Drehpunkt (Lagerkraft) zeigen</label>
+    <label><input type="checkbox" id="showA" checked> Hebelarme zeigen</label>
+    <label>Ortsfaktor g =
+      <select id="g"><option value="10">10 N/kg</option><option value="9.81">9.81 N/kg</option></select></label>
+  </div>
+
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const svg=$("svg"), NS="http://www.w3.org/2000/svg";
+const PX_CM=6.2, PIVOT={x:380,y:215}, HALF=55, PX_N=0.95, MAXTILT=11*Math.PI/180;
+let tilt=0, target=0;
+const fmt=(n,d=1)=>n.toFixed(d);
+function el(t,a,p=svg){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);p.appendChild(e);return e}
+function vals(){const g=+$("g").value;const m1=+$("m1").value,m2=+$("m2").value,a1=+$("a1").value,a2=+$("a2").value;
+  return {g,m1,m2,a1,a2,F1:m1*g,F2:m2*g}}
+function arrow(x,y,len,dir,color,label,lx){ // dir: 1 down, -1 up
+  const tip=y+dir*len, h=Math.min(12,len*0.5);
+  el("line",{x1:x,y1:y,x2:x,y2:tip-dir*h,stroke:color,"stroke-width":4,"stroke-linecap":"round"});
+  el("path",{d:`M${x-7},${tip-dir*h} L${x+7},${tip-dir*h} L${x},${tip} Z`,fill:color});
+  const t=el("text",{x:x+(lx||12),y:y+dir*len*0.55+5,fill:color,"font-family":"JetBrains Mono, monospace","font-size":15,"text-anchor":(lx<0?"end":"start")});
+  t.textContent=label;
+}
+function rot(dx,dy){const c=Math.cos(tilt),s=Math.sin(tilt);return {x:PIVOT.x+dx*c-dy*s,y:PIVOT.y+dx*s+dy*c}}
+function draw(){
+  const v=vals(); svg.innerHTML="";
+  const css=getComputedStyle(document.documentElement), C=n=>css.getPropertyValue(n).trim();
+  // Boden
+  el("line",{x1:20,y1:PIVOT.y+62,x2:740,y2:PIVOT.y+62,stroke:C("--line"),"stroke-width":2});
+  // Drehpunkt-Bock
+  el("path",{d:`M${PIVOT.x},${PIVOT.y+6} L${PIVOT.x-30},${PIVOT.y+62} L${PIVOT.x+30},${PIVOT.y+62} Z`,fill:C("--pivot"),opacity:.85});
+  // Balken
+  const g=el("g",{transform:`rotate(${tilt*180/Math.PI} ${PIVOT.x} ${PIVOT.y})`});
+  el("rect",{x:PIVOT.x-HALF*PX_CM,y:PIVOT.y-6,width:2*HALF*PX_CM,height:12,rx:3,fill:C("--beam")},g);
+  for(let cm=-50;cm<=50;cm+=10){ if(!cm)continue;
+    el("line",{x1:PIVOT.x+cm*PX_CM,y1:PIVOT.y-6,x2:PIVOT.x+cm*PX_CM,y2:PIVOT.y+6,stroke:C("--bg"),"stroke-width":1.5,opacity:.7},g)}
+  // Körper
+  [[-v.a1,v.m1,"--left"],[v.a2,v.m2,"--right"]].forEach(([a,m,c])=>{
+    const s=18+Math.sqrt(m)*10;
+    el("rect",{x:PIVOT.x+a*PX_CM-s/2,y:PIVOT.y-6-s,width:s,height:s,rx:3,fill:C(c),opacity:.9},g);
+    const t=el("text",{x:PIVOT.x+a*PX_CM,y:PIVOT.y-6-s-7,"text-anchor":"middle",fill:C(c),"font-family":"JetBrains Mono, monospace","font-size":13},g);
+    t.textContent=fmt(m)+" kg";
+  });
+  el("circle",{cx:PIVOT.x,cy:PIVOT.y,r:4,fill:C("--fg")});
+  // Abstände
+  if($("showA").checked && target===0 && Math.abs(tilt)<1e-3){
+    [[-v.a1,"l₁","--left"],[v.a2,"l₂","--right"]].forEach(([a,lab,c])=>{
+      const y=PIVOT.y-104, x2=PIVOT.x+a*PX_CM;
+      el("line",{x1:PIVOT.x,y1:y,x2,y2:y,stroke:C(c),"stroke-width":1.5});
+      [PIVOT.x,x2].forEach(x=>el("line",{x1:x,y1:y-6,x2:x,y2:y+6,stroke:C(c),"stroke-width":1.5}));
+      const t=el("text",{x:(PIVOT.x+x2)/2,y:y-10,"text-anchor":"middle",fill:C(c),"font-family":"JetBrains Mono, monospace","font-size":14});
+      t.textContent=`${lab} = ${fmt(Math.abs(a)/100,2)} m`;
+    });
+  }
+  // Kraftpfeile (immer senkrecht)
+  const p1=rot(-v.a1*PX_CM,0), p2=rot(v.a2*PX_CM,0);
+  arrow(p1.x,p1.y,v.F1*PX_N,1,C("--left"),`F₁ = ${fmt(v.F1)} N`,-12);
+  arrow(p2.x,p2.y,v.F2*PX_N,1,C("--right"),`F₂ = ${fmt(v.F2)} N`,12);
+  if($("showFA").checked){
+    const FA=v.F1+v.F2;
+    arrow(PIVOT.x,PIVOT.y,FA*PX_N,-1,C("--pivot"),"",12);
+    const lt=el("text",{x:PIVOT.x,y:PIVOT.y+84,"text-anchor":"middle",fill:C("--pivot"),"font-family":"JetBrains Mono, monospace","font-size":15});
+    lt.textContent=`Lagerkraft ${fmt(FA)} N`;
+  }
+  const sc=el("text",{x:24,y:390,fill:C("--muted"),"font-family":"Source Sans 3, sans-serif","font-size":13});
+  sc.textContent="Alle Pfeillängen im gleichen Massstab";
+}
+function update(){
+  const v=vals();
+  $("m1o").textContent=fmt(v.m1)+" kg"; $("m2o").textContent=fmt(v.m2)+" kg";
+  $("a1o").textContent=v.a1+" cm"; $("a2o").textContent=v.a2+" cm";
+  const d=v.g===10?0:2;
+  $("F1").textContent=fmt(v.F1,d)+" N"; $("F2").textContent=fmt(v.F2,d)+" N";
+  const M1=v.F1*v.a1/100, M2=v.F2*v.a2/100;
+  const eq=Math.abs(M1-M2)<1e-9;
+  $("M1").textContent=eq?fmt(M1,2)+" N·m":"–"; $("M2").textContent=eq?fmt(M2,2)+" N·m":"–";
+  $("st").className="cell state "+(eq?"ok":"no");
+  $("stv").textContent=eq?"Gleichgewicht":"Kein Gleichgewicht";
+  target=eq?0:(M1>M2?-MAXTILT:MAXTILT);
+  draw();
+}
+let last=0;
+function loop(t){
+  const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if(Math.abs(target-tilt)>1e-4){tilt=reduce?target:tilt+(target-tilt)*0.12;draw()}
+  requestAnimationFrame(loop);
+}
+["m1","m2","a1","a2","g","showFA","showA"].forEach(id=>$(id).addEventListener("input",update));
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",draw);
+update(); requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
